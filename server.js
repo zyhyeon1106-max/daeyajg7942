@@ -1,4 +1,5 @@
 const express = require('express');
+const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { db, hashPin, generateToken, formatClassId } = require('./db.js');
@@ -7,7 +8,26 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+
+// Check if public folder exists, or if files were uploaded directly to root
+const hasPublicDir = fs.existsSync(path.join(__dirname, 'public', 'index.html'));
+const publicPath = hasPublicDir ? path.join(__dirname, 'public') : __dirname;
+
+app.use(express.static(publicPath));
+
+// Route mappings so /css/style.css and /js/*.js work even when in root
+app.get('/css/style.css', (req, res) => {
+  const p = hasPublicDir ? path.join(__dirname, 'public', 'css', 'style.css') : path.join(__dirname, 'style.css');
+  res.sendFile(p);
+});
+app.get('/js/app.js', (req, res) => {
+  const p = hasPublicDir ? path.join(__dirname, 'public', 'js', 'app.js') : path.join(__dirname, 'app.js');
+  res.sendFile(p);
+});
+app.get('/js/confetti.js', (req, res) => {
+  const p = hasPublicDir ? path.join(__dirname, 'public', 'js', 'confetti.js') : path.join(__dirname, 'confetti.js');
+  res.sendFile(p);
+});
 
 // Constants
 const GOAL_MINUTES = 4782; // 79 hours 42 minutes
@@ -491,7 +511,8 @@ app.delete('/api/admin/classes/:id', (req, res) => {
 
 // Fallback to index.html for SPA
 app.use((req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  const indexPath = hasPublicDir ? path.join(__dirname, 'public', 'index.html') : path.join(__dirname, 'index.html');
+  res.sendFile(indexPath);
 });
 
 app.listen(PORT, () => {
